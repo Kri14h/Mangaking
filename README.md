@@ -1,10 +1,4 @@
-# Manga Reader – Full Rebuild Prompt for GitHub Copilot / VS Code AI
 
-Paste this entire prompt into GitHub Copilot Chat (or any AI assistant in your Codespace).
-
----
-
-## PROMPT (copy everything below this line)
 
 I have an existing Next.js manga reader project. I want you to completely transform it. Here is exactly what to do, step by step. Do not skip any step.
 
@@ -367,8 +361,4 @@ The app should now start cleanly with no MangaDex errors. The homepage is the Li
 
 ---
 
-## Physical steps YOU need to do manually
 
-1. **In your Codespace terminal**, run: `npm install jszip`
-2. **Make sure Node 20 is active** — run `nvm use 20` before `npm run dev`
-3. **Test with a real CBZ file** — download any free/legal manga CBZ from sites like [Internet Archive](https://archive.org) and upload it using the + button
