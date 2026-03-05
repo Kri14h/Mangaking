@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
     'onnxruntime-web'
   ],
   turbopack: {},
+  reactStrictMode: true,
+  poweredByHeader: false,
+  compress: true,
+  generateEtags: true,
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react'],
@@ -25,6 +29,9 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 86400, // 24 hours
+    unoptimized: false,
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';",
     remotePatterns: [
       {
         protocol: 'https',
@@ -53,11 +60,29 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: '/api/readTextAndReplace',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+      {
         source: '/api/manga/:path*',
         headers: [
           {
             key: 'Cache-Control',
             value: 'public, s-maxage=3600, stale-while-revalidate=86400',
+          },
+        ],
+      },
+      {
+        source: '/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
@@ -71,6 +96,18 @@ const nextConfig: NextConfig = {
           {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN'
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff'
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin'
           },
         ],
       },

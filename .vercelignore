@@ -1,0 +1,50 @@
+# Dependencies and build artifacts (handled by Vercel)
+node_modules/
+.next/
+.env*.local
+.DS_Store
+
+# Version control and git
+.git
+.gitignore
+.github
+
+# Development and documentation
+README.md
+LICENSE
+livedemoimages/
+.eslintrc.json
+.eslintignore
+Dockerfile
+
+# Git configuration
+.git/
+.gitmodules
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Testing
+.jest/
+coverage/
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS specific files
+Thumbs.db
+.DS_Store
+
+# Build output
+dist/
+build/
+out/
+
+# Optional files (compiled TypeScript)
+*.tsbuildinfo
