@@ -108,6 +108,43 @@ export default function ReaderPage() {
     setSelectionBox(null);
   };
 
+  // Touch handlers for mobile/smartphone support
+  const handleTouchStart = (e) => {
+    if (!pencilMode) return;
+    const touch = e.touches[0];
+    const rect = imageRef.current.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    startPos.current = { x, y };
+    setIsSelecting(true);
+    setSelectionBox({ x, y, width: 0, height: 0 });
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isSelecting || !pencilMode) return;
+    const touch = e.touches[0];
+    const rect = imageRef.current.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const width = x - startPos.current.x;
+    const height = y - startPos.current.y;
+    setSelectionBox({
+      x: Math.min(startPos.current.x, x),
+      y: Math.min(startPos.current.y, y),
+      width: Math.abs(width),
+      height: Math.abs(height)
+    });
+  };
+
+  const handleTouchEnd = async () => {
+    if (!isSelecting || !pencilMode || !selectionBox) return;
+    setIsSelecting(false);
+    
+    // Perform localized OCR on selection
+    await performLocalizedOCR(selectionBox);
+    setSelectionBox(null);
+  };
+
   const performLocalizedOCR = async (box) => {
     if (!pages[currentPage]) return;
     
@@ -248,18 +285,20 @@ export default function ReaderPage() {
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           style={{ 
             cursor: pencilMode ? (isSelecting ? 'crosshair' : 'pointer') : 'default',
-            userSelect: 'none'
+            userSelect: 'none',
+            touchAction: 'none'
           }}
         />
 
-        {/* Pencil mode overlay */}
+        {/* Pencil mode hint */}
         {pencilMode && (
-          <div className="absolute inset-0 bg-black/20 pointer-events-none">
-            <div className="absolute top-4 left-4 bg-black/80 text-white px-3 py-1 rounded-lg text-sm">
-              📝 Select text area by dragging
-            </div>
+          <div className="absolute top-4 left-4 bg-black/80 text-white px-3 py-1 rounded-lg text-sm pointer-events-none">
+            📝 Select text area by dragging
           </div>
         )}
 
