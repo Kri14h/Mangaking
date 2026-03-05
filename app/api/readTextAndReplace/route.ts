@@ -172,21 +172,19 @@ async function enhanceImageForOCR(inputBuffer: Buffer): Promise<ProcessedImage> 
       lower: 10,
       upper: 90 // Better contrast range
     })
-    .linear(1.1, -0.05) // Slight brightness/contrast boost
     .sharpen({
-      sigma: 1.5, // More aggressive sharpening for text
-      m1: 2,      // Flat areas
-      m2: 0.7,    // Jagged areas
-      x1: 2,      // Threshold for strong sharpening
-      y2: 10,     // Maximum boosting for strong edges
-      y3: 20      // Maximum boosting for weak edges
+      sigma: 0.5,
+      m1: 1,
+      m2: 0.3,
+      x1: 1,
+      y2: 5,
+      y3: 10
     })
-    .median(1) // Noise reduction while preserving edges
     .jpeg({
       quality: PERFORMANCE_SETTINGS.jpegQuality,
       progressive: false,
-      mozjpeg: true, // Better compression
-      chromaSubsampling: '4:4:4' // No chroma subsampling for better text
+      mozjpeg: true,
+      chromaSubsampling: '4:4:4'
     })
     .toBuffer();
 
@@ -226,31 +224,53 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const memoryBefore = getMemoryUsage();
     console.log(`💾 Memory before processing: ${memoryBefore.rss}MB RSS, ${memoryBefore.heapUsed}MB Heap`);
 
-    const formData = await req.formData();
-    const fileField = formData.get("file");
+    // Determine how the image was sent (JSON/base64/url vs formData file upload)
+    let buffer: Buffer;
+    let language = "en";
+    let cropRegion = null;
 
-    if (!fileField || !(fileField instanceof Blob)) {
-      console.log(`❌ No valid file provided for request: ${requestId}`);
-      return NextResponse.json<ResponsePayloadError>({
-        status: "error",
-        error: "No valid file provided"
-      }, { status: 400 });
+    const contentType = req.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const body = await req.json();
+      language = body.language || "en";
+      cropRegion = body.cropRegion;
+
+      if (body.imageBase64) {
+        const base64Data = body.imageBase64.split(",")[1];
+        buffer = Buffer.from(base64Data, "base64");
+      } else if (body.imageUrl) {
+        const response = await fetch(body.imageUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        buffer = Buffer.from(arrayBuffer);
+      } else {
+        return NextResponse.json({ error: "No image provided" }, { status: 400 });
+      }
+    } else {
+      const formData = await req.formData();
+      const fileField = formData.get("file");
+
+      if (!fileField || !(fileField instanceof Blob)) {
+        console.log(`❌ No valid file provided for request: ${requestId}`);
+        return NextResponse.json<ResponsePayloadError>({
+          status: "error",
+          error: "No valid file provided"
+        }, { status: 400 });
+      }
+
+      const uploadedFile = fileField as File;
+      if (!uploadedFile.type?.startsWith?.("image/")) {
+        console.log(`❌ Invalid file type for request: ${requestId}`);
+        return NextResponse.json<ResponsePayloadError>({
+          status: "error",
+          error: "Please upload an image file"
+        }, { status: 400 });
+      }
+
+      console.log(`📁 Processing file: ${uploadedFile.name}, Type: ${uploadedFile.type}, Size: ${(uploadedFile.size / 1024 / 1024).toFixed(2)}MB`);
+
+      buffer = Buffer.from(await uploadedFile.arrayBuffer());
+      language = (formData.get("language") as string) || "en";
     }
-
-    const uploadedFile = fileField as File;
-    if (!uploadedFile.type?.startsWith?.("image/")) {
-      console.log(`❌ Invalid file type for request: ${requestId}`);
-      return NextResponse.json<ResponsePayloadError>({
-        status: "error",
-        error: "Please upload an image file"
-      }, { status: 400 });
-    }
-
-    console.log(`📁 Processing file: ${uploadedFile.name}, Type: ${uploadedFile.type}, Size: ${(uploadedFile.size / 1024 / 1024).toFixed(2)}MB`);
-
-    const buffer = Buffer.from(await uploadedFile.arrayBuffer());
-    const memoryAfterLoad = getMemoryUsage();
-    console.log(`💾 Memory after file load: ${memoryAfterLoad.rss}MB RSS`);
 
     let processedImage: ProcessedImage;
     try {
@@ -258,6 +278,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       processedImage = await enhanceImageForOCR(buffer);
       imagePath = processedImage.path;
       console.log(`✅ Image enhancement completed in ${processedImage.metadata.processingTime}ms`);
+
+      // Handle crop region if provided
+      if (cropRegion && cropRegion.x !== undefined && cropRegion.y !== undefined && cropRegion.width && cropRegion.height) {
+        console.log(`✂️ Cropping image to region: ${JSON.stringify(cropRegion)}`);
+        const croppedBuffer = await sharp(processedImage.path)
+          .extract({
+            left: Math.max(0, Math.round(cropRegion.x)),
+            top: Math.max(0, Math.round(cropRegion.y)),
+            width: Math.round(cropRegion.width),
+            height: Math.round(cropRegion.height)
+          })
+          .jpeg({ quality: PERFORMANCE_SETTINGS.jpegQuality })
+          .toBuffer();
+
+        // Save cropped image
+        const croppedPath = path.join("/tmp", `ocr_cropped_${Date.now()}.jpg`);
+        fs.writeFileSync(croppedPath, croppedBuffer);
+        imagePath = croppedPath; // Use cropped image for OCR
+        console.log(`✅ Image cropped successfully`);
+      }
     } catch (e) {
       console.error(`❌ Image processing failed:`, e);
       return NextResponse.json<ResponsePayloadError>({
@@ -272,8 +312,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     console.log(`💾 Memory before OCR: ${memoryBeforeOCR.rss}MB RSS`);
 
     try {
-      // Extract language from request if provided
-      const language = formData.get("language") as string || "en";
+      // language variable was already determined earlier from JSON or formData
       const ocrInstance = await getOCRInstance(language);
       const ocrStart = Date.now();
 

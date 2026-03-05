@@ -16,11 +16,11 @@ class OcrWrapper {
       // Initialize OCR with settings matching the CLI version
       this.ocrInstance = await Ocr.create({
         threshold: 0.1,
-        minSize: 5,
+        minSize: 3,
         maxSize: 1000,
         unclipRatio: 1.8,
         language: languages,
-        confidenceThreshold: 0.6,
+        confidenceThreshold: 0.3,
         imageHeight: 48,
         removeDuplicateChars: true
       });
