@@ -10,11 +10,7 @@
       "memory": 3008
     }
   },
-  "env": {
-    "NEXT_PUBLIC_API_URL": {
-      "description": "API base URL for client-side requests"
-    }
-  },
+
   "headers": [
     {
       "source": "/api/readTextAndReplace",

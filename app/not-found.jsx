@@ -7,12 +7,10 @@ import {
   WifiOff,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useTheme } from "./providers/ThemeContext";
 import Link from "next/link"
 export default function Custom404() {
   const router = useRouter();
-  const { theme } = useTheme();
-  const isDark = theme == "dark";
+  const isDark = true; // Default to dark theme
 
   const handleGoBack = () => {
     router.back();
