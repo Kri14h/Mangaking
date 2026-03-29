@@ -1,5 +1,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+export const runtime = 'nodejs';
+
 import { NextResponse, NextRequest } from "next/server";
 import path from "path";
 import fs from "fs";
